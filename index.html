@@ -1,7 +1,24 @@
 <!DOCTYPE html>
 <html>
-    <body>
-        <h1>Hello World</h1>
-        <p>I'm hosted with Github Pages.</p>
-    </body>
+
+<head>
+	<title>Hello, Polymer!</title>
+	<base href="/bower_components/">
+	<script src="webcomponentsjs/webcomponents-lite.min.js"></script>
+	<link rel="import" href="paper-fab/paper-fab.html">
+	<link rel="import" href="iron-icons/iron-icons.html">
+	<style>
+		.center {
+			position: fixed;
+			left: 50vw;
+			top: 50vh;
+			transform: translate(-50%, -50%);
+		}
+	</style>
+</head>
+
+<body>
+	<paper-fab icon="add" class="center">Click Me</paper-fab>
+</body>
+
 </html>
