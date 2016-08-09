@@ -1,0 +1,50 @@
+<html>
+<head>
+    <title>Homepage - std4453</title>
+
+    <script src="//cdn.bootcss.com/three.js/r79/three.js"></script>
+    <script src="//cdn.bootcss.com/jquery/3.1.0/jquery.min.js"></script>
+    <script src="/bower_components/webcomponentsjs/webcomponents-lite.min.js"></script>
+    <link rel="import" href="/bower_components/polymer/polymer.html">
+    <link rel="import" href="/bower_components/paper-material/paper-material.html">
+
+    <script>
+        $(document).ready(function () {
+            $("div#panel").click(function () {
+                $(this).toggleClass("clicked");
+            })
+        })
+    </script>
+
+    <style is="custom-style">
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #333333;
+            perspective: 1800px;
+        }
+
+        div#panel {
+            position: absolute;
+            width: 50vw;
+            height: 75vh;
+            left: 50vw;
+            top: 50vh;
+            margin-left: -25vw;
+            margin-top: -37.5vh;
+            background-color: #777777;
+            transition: transform 600ms cubic-bezier(0.4,0.0,0.2,1);
+            transform-style: preserve-3d;
+
+            @apply(--shadow-elevation-16dp);
+        }
+        div#panel.clicked {
+            transform: rotateY(180deg) scale(2, 1.33333);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="panel"></div>
+</body>
+</html>
