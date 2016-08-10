@@ -10,7 +10,7 @@
 
     <script>
         $(document).ready(function () {
-            $("div#panel").click(function () {
+            $("div.flip-panel").click(function () {
                 $(this).toggleClass("clicked");
             })
         })
@@ -24,27 +24,53 @@
             perspective: 1800px;
         }
 
-        div#panel {
+        div.flip-panel {
             position: absolute;
-            width: 50vw;
-            height: 75vh;
-            left: 50vw;
+            width: 400px;
+            height: 75px;
             top: 50vh;
-            margin-left: -25vw;
-            margin-top: -37.5vh;
             background-color: #777777;
-            transition: transform 600ms cubic-bezier(0.4,0.0,0.2,1);
+            transition: all 450ms cubic-bezier(0.65, 0.05, 0.36, 1);
             transform-style: preserve-3d;
-
-            @apply(--shadow-elevation-16dp);
+            transform: translate(-50%, -50%) rotateY(0deg);
         }
-        div#panel.clicked {
-            transform: rotateY(180deg) scale(2, 1.33333);
+        div.flip-panel.clicked {
+            transform: translate(-50%, -50%) rotateY(180deg);
+            width: 100vw;
+            height: 100vh;
+            left: 50vw !important;
+            z-index: 100;
+        }
+
+        div#panel-1 {
+            left: calc(50vw - 300px);
+        }
+        div#panel-2 {
+            left: calc(50vw + 300px);
+        }
+        div.label {
+            line-height: 50px;
+            font-family: "DINCond-Regular","DIN",DIN,"Helvetica-Condensed-Black-Se","Helvetica-Conth",Helvetica,sans-serif;
+            font-size: 50px;
+            color: white;
+            text-align: center;
+            box-sizing: border-box;
+            display: table;
+        }
+        div.label p {
+            display: table-cell;
+            vertical-align: middle;
+            opacity: 1;
+            transition: opacity 200ms ease;
+        }
+        div.label.clicked p {
+            opacity: 0;
         }
     </style>
 </head>
 
 <body>
-    <div id="panel"></div>
+    <div id="panel-1" class="flip-panel label"><p>DESIGNER</p></div>
+    <div id="panel-2" class="flip-panel label"><p>DEVELOPER</p></div>
 </body>
 </html>
