@@ -1,0 +1,111 @@
+<html>
+<head>
+	<title>Test 2 - std4453</title>
+
+	<script src="//cdn.bootcss.com/three.js/r79/three.js"></script>
+	<script src="//cdn.bootcss.com/jquery/3.1.0/jquery.min.js"></script>
+	<script src="http://threejs.org/examples/js/controls/OrbitControls.js"></script>
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+		}
+		canvas {
+			width: 100%;
+			height: 100%;
+		}
+	</style>
+</head>
+
+<body>
+	<script src="BokehShader/DAT.GUI.min.js"></script>
+	<script src="BokehShader2.js"></script>
+	<script>
+var context={};
+
+function onResize() {
+	context.renderer.setSize(window.innerWidth, window.innerHeight);
+	context.width = window.innerWidth;
+	context.height = window.innerHeight;
+}
+
+function init() {
+	context.scene = new THREE.Scene();
+	
+	context.renderer = new THREE.WebGLRenderer();
+	context.renderer.setClearColor(0xb4b4b4, 1);
+	onResize();
+	$(window).resize(onResize);
+	document.body.appendChild(context.renderer.domElement);
+
+	context.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+	context.camera.position.z = -2;
+	context.controls = new THREE.OrbitControls(context.camera, context.renderer.domElement);
+	context.controls.autoRotate = true;
+
+	// setup lighting
+	context.lights = [];
+
+	var ambient = new THREE.AmbientLight(0x4f4f4f);
+	context.lights.push(ambient);
+	context.scene.add(ambient);
+
+	var toplight = new THREE.DirectionalLight(0xFFFFFF, 1);
+	toplight.position.set(0, 15, 5);
+	context.lights.push(toplight);
+	context.scene.add(toplight);
+
+	var sidelight = new THREE.DirectionalLight(0x59DDFF, .3);
+	sidelight.position.set(-10, 5, -10);
+	context.lights.push(sidelight);
+	context.scene.add(sidelight);
+
+	var bottomlight =  new THREE.DirectionalLight(0xFF30A8, .5);
+	bottomlight.position.set(5, -15, 5);
+	context.lights.push(bottomlight);
+	context.scene.add(bottomlight);
+
+	// add meshes
+	var objects=100;
+	for (var i=0;i<objects;++i) {
+		var geo = new THREE.OctahedronGeometry(.3);
+		var mat = new THREE.MeshPhongMaterial({
+			color: 0xffffff,
+			shading: THREE.FlatShading
+		});
+		var mesh = new THREE.Mesh(geo, mat);
+
+		var x = Math.random() * 10 - 5;
+		var y = Math.random() * 10 - 5;
+		var z = Math.random() * 10 - 5;
+		mesh.position.set(x, y, z);
+		mesh.scale.y = Math.sqrt(3);
+
+		context.scene.add(mesh);
+	}
+
+	// Bokeh
+	initPostprocessing(context);
+}
+
+var bokehEnabled = true;
+
+function render() {
+	requestAnimationFrame(render);
+    update();
+
+    if (bokehEnabled) {
+	    renderBokeh(context.scene, context.camera,context.renderer);
+	} else
+	    context.renderer.render(context.scene, context.camera);
+}
+
+function update() {
+	context.controls.update();
+}
+
+init();
+render();
+	</script>
+</body>
+</html>
