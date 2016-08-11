@@ -2,10 +2,8 @@
 <head>
 	<title>Test 2 - std4453</title>
 
-	<script src="//cdn.bootcss.com/three.js/r79/three.js"></script>
 	<script src="//cdn.bootcss.com/jquery/3.1.0/jquery.min.js"></script>
-	<!-- <script src="//threejs.org/examples/js/controls/OrbitControls.js"></script> -->
-	<script src="OrbitControls.js"></script>
+	<link rel="import" href="bokeh/bokeh.html">
 	<style>
 		body {
 			margin: 0;
@@ -19,8 +17,6 @@
 </head>
 
 <body>
-	<script src="BokehShader/DAT.GUI.min.js"></script>
-	<script src="BokehShader2.js"></script>
 	<script>
 var context={};
 
@@ -33,14 +29,21 @@ function onResize() {
 function init() {
 	context.scene = new THREE.Scene();
 	
-	context.renderer = new THREE.WebGLRenderer();
-	context.renderer.setClearColor(0xb4b4b4, 1);
+	context.renderer = new THREE.WebGLRenderer({
+		clearColor: 0xcfcfcf,
+	});
+	// context.renderer.setClearColor(0xb4b4b4, 1);
 	onResize();
 	$(window).resize(onResize);
 	document.body.appendChild(context.renderer.domElement);
 
-	context.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+	var width = window.innerWidth,height = window.innerHeight;
+	context.camera = new THREE.PerspectiveCamera(0, width / height, 0.01, 100);
 	context.camera.position.z = -2;
+	context.camera.focalLength = 45;
+	context.camera.frameSize = 32;
+	context.camera.setLens(context.camera.focalLength, context.camera.frameSize);
+
 	context.controls = new THREE.OrbitControls(context.camera, context.renderer.domElement);
 	context.controls.autoRotate = true;
 
@@ -67,9 +70,9 @@ function init() {
 	context.scene.add(bottomlight);
 
 	// add meshes
-	var objects=100;
+	var objects=300;
 	for (var i=0;i<objects;++i) {
-		var geo = new THREE.OctahedronGeometry(.3);
+		var geo = new THREE.OctahedronGeometry(.2);
 		var mat = new THREE.MeshPhongMaterial({
 			color: 0xffffff,
 			shading: THREE.FlatShading
@@ -85,8 +88,16 @@ function init() {
 		context.scene.add(mesh);
 	}
 
-	// Bokeh
-	initPostprocessing(context);
+	var conf = {
+		'focalDepth': 5,
+		'fstop': 22.0,
+		'maxblur': 3.0,
+		'CoC': 0.02,
+		'threshold': 0.5,
+		'gain': 0.2,
+		'bias': 0.5,
+	};
+	initBokeh(context, conf);
 }
 
 var bokehEnabled = true;
@@ -96,9 +107,13 @@ function render() {
     update();
 
     if (bokehEnabled) {
-	    renderBokeh(context.scene, context.camera,context.renderer);
+		context.scene.overrideMaterial = context.depthMaterial;
+		context.renderer.render(context.scene, context.camera, context.depthTarget);
+		context.scene.overrideMaterial = null;
+
+		renderBokeh(context);
 	} else
-	    context.renderer.render(context.scene, context.camera);
+		context.renderer.render(context.scene, context.camera);
 }
 
 function update() {
