@@ -1,0 +1,204 @@
+<html>
+<head>
+	<title>Octahedron</title>
+
+	<script src="//cdn.bootcss.com/jquery/3.1.0/jquery.min.js"></script>
+
+	<script src="/bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+	<link rel="import" href="/bower_components/polymer/polymer.html">
+	<link rel="import" href="/bower_components/paper-card/paper-card.html">
+	<link rel="import" href="/bower_components/paper-input/paper-input.html">
+	<link rel="import" href="/bower_components/paper-button/paper-button.html">
+
+	<script src="//cdn.bootcss.com/three.js/r79/three.js"></script>
+	<script src="three.js/OrbitControls.js"></script>
+
+	<style is="custom-style">
+		body {
+			padding: 0;
+			margin: 0;
+		}
+		:root {
+			font-family: 'Roboto', 'Noto', sans-serif;
+		}
+		canvas-container {
+			position: absolute;
+			width: 100%;
+			height: 100%;
+		}
+		canvas-container > canvas {
+			width: 100%;
+			height: 100%;
+		}
+		paper-card#colors-container {
+			position: absolute;
+			width: 400px;
+			right: 10px;
+			top: 10px;
+
+			opacity: 0.5;
+			transition: opacity 250ms ease;
+			
+			--paper-card-background-color: rgb(250, 250, 250);
+		}
+		paper-card#colors-container:hover {
+			opacity: 1;
+		}
+		paper-card#colors-container pre {
+			font-family: inherit;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="canvas-container"></div>
+	<paper-card id="colors-container" elevation="3">
+		<div class="card-content">
+			<paper-input id="face-1" label="Face 1" no-label-float></paper-input>
+			<paper-input id="face-2" label="Face 2" no-label-float></paper-input>
+			<paper-input id="face-3" label="Face 3" no-label-float></paper-input>
+			<paper-input id="face-4" label="Face 4" no-label-float></paper-input>
+			<paper-input id="face-5" label="Face 5" no-label-float></paper-input>
+			<paper-input id="face-6" label="Face 6" no-label-float></paper-input>
+			<paper-input id="face-7" label="Face 7" no-label-float></paper-input>
+			<paper-input id="face-8" label="Face 8" no-label-float></paper-input>
+		</div>
+	</paper-card>
+
+	<script type="text/javascript">
+var context={};
+window.context = context;
+
+function onResize() {
+	if (typeof context.camera !== "undefined") {
+		context.camera.aspect = window.innerWidth / window.innerHeight;
+	    context.camera.updateProjectionMatrix();
+	}
+    context.renderer.setSize( window.innerWidth, window.innerHeight );
+	context.width = window.innerWidth;
+	context.height = window.innerHeight;
+}
+
+function init() {
+	initThree();
+	initGui();
+}
+
+function initGui() {
+	$("paper-input").attr("maxlength","6").attr("pattern","[0-9a-fA-F]{6}").each(function() {
+		var index = parseInt(this.id.substring(5)) - 1;
+		this.addEventListener("blur", function() {
+			this.validate();
+			if (!this.invalid)
+				setFaceColors(index);
+			context.outlines[index].visible = false;
+		});
+		this.addEventListener("focus", function() {
+			context.outlines[index].visible = true;
+		})
+	});
+
+	// $("canvas").mousedown(function() {
+	// 	$("paper-input").each(function() {
+	// 		this.inputElement.blur();
+	// 	});
+	// });
+
+	var initialColors = [
+		"fff2f8",
+		"ffcde3",
+		"fbaed1",
+		"ff92c4",
+		"ff6aad",
+		"ff4d9e",
+		"fd2f8c",
+		"fd0f7b"
+	];
+	for (var i = 0; i < 8; ++i)
+		$("#face-" + (i + 1))[0].value = initialColors[i];
+	setFaceColors();
+}
+
+function initThree() {
+	context.scene = new THREE.Scene();
+	
+	context.renderer = new THREE.WebGLRenderer({
+		antialias: true
+	});
+	context.renderer.setClearColor(0xfafafa);
+
+	onResize();
+	window.addEventListener("resize", onResize, false);
+	$("#canvas-container").append(context.renderer.domElement);
+
+	context.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 100);
+	context.camera.position.z=-1;
+	context.camera.rotation.set(-2.66, -1.27, -2.68);
+	context.camera.position.set(-0.95, 0.14, -0.26);
+
+	context.controls = new THREE.OrbitControls(context.camera, context.renderer.domElement);
+
+	// setup lighting
+	context.lights = [];
+
+	// add meshes
+	var geo = new THREE.OctahedronGeometry(.2);
+	geo.scale(1, Math.sqrt(3), 1);
+	context.octahedron = geo;
+	var mat = new THREE.MeshBasicMaterial({
+		color: 0xffffff,
+		shading: THREE.FlatShading,
+		vertexColors: THREE.FaceColors
+	});
+	var mesh = new THREE.Mesh(geo, mat);
+	context.scene.add(mesh);
+
+	context.outlines=[];
+
+	var outlineMat = new THREE.MeshBasicMaterial({color: 0x000000});
+	for (var i = 0; i < 8; ++i) {
+		var face = geo.faces[i];
+		var outlineGeo = new THREE.Geometry();
+		Array.prototype.push.apply(outlineGeo.vertices, geo.vertices);
+		outlineGeo.faces.push(new THREE.Face3(face.a, face.b, face.c));
+		var outlineMesh = new THREE.Mesh(outlineGeo, outlineMat);
+		var outline = new THREE.EdgesHelper(outlineMesh, 0x000000);
+		context.outlines.push(outline);
+		outline.visible = false;
+		context.scene.add(outline);
+	}
+}
+
+function render() {
+	requestAnimationFrame(render);
+    update();
+	context.renderer.render(context.scene, context.camera);
+}
+
+function update() {
+	context.controls.update();
+}
+
+function setFaceColors(index) {
+	var setFaceColor = function(index) {
+		var regexp = /[0-9a-fA-F]{6}/;
+		var color = $("#face-" + (index + 1))[0].value;
+		if (regexp.test(color)) {
+			context.octahedron.faces[index].color.setHex(parseInt(color, 16));
+			return true;
+		} else
+			return false;
+	}
+
+	if (typeof index === "undefined")
+		for (var i = 0; i < 8; ++i) setFaceColor(i);
+	else
+		setFaceColor(index);
+	context.octahedron.colorsNeedUpdate = true;
+}
+
+init();
+render();
+	</script>
+</body>
+</html>
