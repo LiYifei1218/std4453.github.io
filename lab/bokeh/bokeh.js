@@ -1,73 +1,76 @@
-var defaultConf = {
+var bokeh = {};
+window.bokeh = bokeh;
+
+bokeh.defaultConf = {
 	'focalDepth': 5,
 	'fstop': 8.0,
 	'maxblur': 2.0,
 	'CoC': 0.03,
-	'threshold': 0.5,
-	'gain': 0.2,
 	'bias': 0.5,
 };
 
 function initBokeh(context, conf) {
 	var width = context.width;
 	var height = context.height;
-	var renderer = context.renderer;
-	conf = conf || defaultConf;
+	conf = conf || bokeh.defaultConf;
 
-	// depth
 	var depthShader = THREE.ShaderLib["depthRGBA"];
 	var depthUniforms = THREE.UniformsUtils.clone(depthShader.uniforms);
-
 	var depthMaterial = new THREE.ShaderMaterial({
 		fragmentShader: depthShader.fragmentShader,
 		vertexShader: depthShader.vertexShader,
-		uniforms: depthUniforms
+		uniforms: depthUniforms,
+		blending: THREE.NoBlending,
 	});
-	context.depthMaterial = depthMaterial;
-	depthMaterial.blending = THREE.NoBlending;
-
+	bokeh.depthMaterial = depthMaterial;
 	var depthTarget = new THREE.WebGLRenderTarget(width, height, {
 		minFilter: THREE.NearestFilter,
 		magFilter: THREE.NearestFilter,
-		format: THREE.RGBAFormat
+		format: THREE.RGBAFormat,
 	});
-	context.depthTarget = depthTarget;
+	bokeh.depthTarget = depthTarget;
 
-	// postprocessing
-	var composer = new THREE.EffectComposer(renderer);
-	context.composer = composer;
-	composer.addPass(new THREE.RenderPass(context.scene, context.camera));
+	var uniforms = THREE.UniformsUtils.clone(THREE.DoFShader.uniforms);
 
-	// depth of field
-	var dof = new THREE.ShaderPass(THREE.DoFShader);
+	uniforms['tDiffuse'].value = context.renderBuffer;
+	uniforms['tDepth'].value = depthTarget;
 
-	// binding
-	dof.uniforms['tDepth'].value = depthTarget;
+	uniforms['size'].value.set(width, height);
+	uniforms['textel'].value.set(1.0 / width, 1.0 / height);
 
-	dof.uniforms['size'].value.set(width, height);
-	dof.uniforms['textel'].value.set(1.0 / width, 1.0 / height);
+	uniforms['znear'].value = context.camera.near;
+	uniforms['zfar'].value = context.camera.far;
+	uniforms['focalLength'].value = context.camera.focalLength;
 
-	// camera, copied, as a matter of fact
-	dof.uniforms['znear'].value = context.camera.near; //camera clipping start
-	dof.uniforms['zfar'].value = context.camera.far; //camera clipping end
-	dof.uniforms['focalLength'].value = context.camera.focalLength; //focal length in mm
+	uniforms['focalDepth'].value = conf.focalDepth;
+	uniforms['fstop'].value = conf.fstop;
+	uniforms['maxblur'].value = conf.maxblur;
+	uniforms['CoC'].value = conf.CoC;
+	uniforms['bias'].value = conf.bias;
 
-	// these things matter, get them from conf
-	dof.uniforms['focalDepth'].value = conf.focalDepth;
-	dof.uniforms['fstop'].value = conf.fstop;
-	dof.uniforms['maxblur'].value = conf.maxblur;
-	dof.uniforms['CoC'].value = conf.CoC; //circle of confusion size in mm (35mm film = 0.03mm)	
-	dof.uniforms['threshold'].value = conf.threshold; //highlight threshold;
-	dof.uniforms['gain'].value = conf.gain; //highlight gain;
-	dof.uniforms['bias'].value = conf.bias; //bokeh edge bias		
+	var material = new THREE.ShaderMaterial({
+		uniforms: uniforms,
+		vertexShader: THREE.DoFShader.vertexShader,
+		fragmentShader: THREE.DoFShader.fragmentShader,
+	});
 
-	// looks technical, doesn't change anything, though
-	dof.uniforms['fringe'].value = 3.7; //bokeh chromatic aberration/fringing
+	var scene = new THREE.Scene();
+	var camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+	var geometry = new THREE.PlaneGeometry(2, 2);
+	var mesh = new THREE.Mesh(geometry, material);
+	scene.add(mesh);
 
-	composer.addPass(dof);
-	dof.renderToScreen = true;
+	bokeh.dof = {
+		uniforms: uniforms,
+		scene: scene,
+		camera: camera,
+	};
 }
 
 function renderBokeh(context) {
-	context.composer.render();
+	context.scene.overrideMaterial = bokeh.depthMaterial;
+	context.renderer.render(context.scene, context.camera, bokeh.depthTarget);
+	context.scene.overrideMaterial = null;
+
+	context.renderer.render(bokeh.dof.scene, bokeh.dof.camera);
 }

@@ -1,0 +1,149 @@
+<html>
+<head>
+	<title>Test 2 - std4453</title>
+
+	<script src="//cdn.bootcss.com/jquery/3.1.0/jquery.min.js"></script>
+	<!-- <script src="bokeh/three.min.js"></script> -->
+	<script src="//cdn.bootcss.com/three.js/r59/three.js"></script>
+	<link rel="import" href="bokeh/bokeh.html">
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+		}
+		canvas {
+			width: 100%;
+			height: 100%;
+		}
+	</style>
+</head>
+
+<body>
+	<script>
+var context={};
+window.context = context;
+
+function onResize() {
+	if (typeof context.camera !== "undefined") {
+		context.camera.aspect = window.innerWidth / window.innerHeight;
+	    context.camera.updateProjectionMatrix();
+	}
+
+	context.renderer.setSize(window.innerWidth, window.innerHeight);
+	context.width = window.innerWidth;
+	context.height = window.innerHeight;
+}
+
+function init() {
+	context.scene = new THREE.Scene();
+	
+	context.renderer = new THREE.WebGLRenderer({
+		clearColor: 0xd8dee3,
+		antialias: true,
+	});
+	onResize();
+	$(window).resize(onResize);
+	document.body.appendChild(context.renderer.domElement);
+
+	var width = window.innerWidth,height = window.innerHeight;
+	context.camera = new THREE.PerspectiveCamera(0, width / height, 0.01, 100);
+	context.camera.focalLength = 45;
+	context.camera.frameSize = 32;
+	context.camera.setLens(context.camera.focalLength, context.camera.frameSize);
+
+	// setup lighting
+	context.lights = [];
+
+	var ambient = new THREE.AmbientLight(0x4f4f4f);
+	context.lights.push(ambient);
+	context.scene.add(ambient);
+
+	var toplight = new THREE.DirectionalLight(0xFFFFFF, 1);
+	toplight.position.set(0, 15, 5);
+	context.lights.push(toplight);
+	context.scene.add(toplight);
+
+	var sidelight = new THREE.DirectionalLight(0x59DDFF, .5);
+	sidelight.position.set(-10, 5, -2);
+	context.lights.push(sidelight);
+	context.scene.add(sidelight);
+
+	var bottomlight =  new THREE.DirectionalLight(0xFF30A8, .5);
+	bottomlight.position.set(5, -15, 5);
+	context.lights.push(bottomlight);
+	context.scene.add(bottomlight);
+
+	// add meshes
+	var group = new THREE.Object3D();
+	context.group = group;
+
+	var objects=1000;
+	var rStart = 5;
+	var rEnd = 15;
+	var rStartSqr = rStart * rStart, rEndSqr = rEnd * rEnd;
+	var rSqrDelta = rEndSqr - rStartSqr;
+	for (var i=0;i<objects;++i) {
+		var geo = new THREE.OctahedronGeometry(.2);
+		var mat = new THREE.MeshPhongMaterial({
+			color: 0xffffff,
+			shading: THREE.FlatShading
+		});
+		var mesh = new THREE.Mesh(geo, mat);
+
+		var angle = Math.random() * Math.PI * 2;
+		var r = Math.sqrt(Math.random() * rSqrDelta + rStartSqr);
+		var y = Math.random() * 10 - 5;
+		var x = Math.sin(angle) * r;
+		var z = Math.cos(angle) * r;
+
+		mesh.position.set(x, y, z);
+		mesh.scale.y = Math.sqrt(3);
+
+		group.add(mesh);
+	}
+	group.position.z = 4.9;
+	context.scene.add(group);
+
+	var conf = {
+		'focalDepth': 5,
+		'fstop': 30.0,
+		'maxblur': 3.0,
+		'CoC': 0.015,
+		'threshold': 1,
+		'gain': 0.2,
+		'bias': 0,
+	};
+	initBokeh(context, conf);
+}
+
+var bokehEnabled = true;
+
+function render() {
+	requestAnimationFrame(render);
+    update();
+
+    if (bokehEnabled) {
+		context.scene.overrideMaterial = context.depthMaterial;
+		context.renderer.render(context.scene, context.camera, context.depthTarget);
+		context.scene.overrideMaterial = null;
+
+		renderBokeh(context);
+	} else
+		context.renderer.render(context.scene, context.camera);
+}
+
+var sceneRot=0;
+var rotSpeed=.001;
+
+function update() {
+	if (typeof context.controls !== "undefined")
+		context.controls.update();
+	context.group.rotation.y = sceneRot;
+	sceneRot += rotSpeed;
+}
+
+init();
+render();
+	</script>
+</body>
+</html>

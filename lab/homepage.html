@@ -1,0 +1,223 @@
+<html>
+<head>
+	<title>Homepage - std4453</title>
+
+	<script src="//cdn.bootcss.com/jquery/3.1.0/jquery.min.js"></script>
+	<script src="//cdn.bootcss.com/three.js/r68/three.js"></script>
+	<link rel="import" href="bokeh/bokeh.html">
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+		}
+		canvas {
+			width: 100%;
+			height: 100%;
+		}
+
+		#developer {
+			width: 150px;
+			height: 150px;
+			position: absolute;
+			left: calc(50vw - 400px);
+			top: calc(50vh - 75px);
+			overflow: hidden;
+			transition: width 200ms ease;
+		}
+		#developer:hover {
+			width: 322.5px;
+		}
+		#developer img {
+			position: absolute;
+			left: 0;
+			top: 0;
+		}
+		#designer {
+			width: 150px;
+			height: 150px;
+			position: absolute;
+			right: calc(50vw - 400px);
+			top: calc(50vh - 75px);
+			overflow: hidden;
+			transition: width 200ms ease;
+		}
+		#designer:hover {
+			width: 303.75;
+		}
+		#designer img {
+			position: absolute;
+			right: 0;
+			top: 0;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="developer-canvas-container">
+		<div id="reset-transform" class="canvas-container"></div>
+	</div>
+
+	<script>
+var context = {};
+window.context = context;
+
+function init() {
+	initEnv();
+	initScene();
+	initCamera();
+	initStates();
+	initEffects();
+}
+
+function initEnv() {
+	context.onResize = function() {
+		var canvas = $("canvas#render");
+
+		context.width = canvas.outerWidth();
+		context.height = canvas.outerHeight();
+
+		context.camera.aspect = context.width / context.height;
+		context.camera.updateProjectionMatrix();
+
+		context.renderer.setSize(context.width, context.height);
+	};
+
+	context.renderer = new THREE.WebGLRenderer({
+		antialias: true,
+	});
+	context.renderer.domElement.id = "render";
+	$(".canvas-container").append(context.renderer.domElement);
+	$(window).resize(context.onResize);
+}
+
+function initScene() {
+	context.scene = new THREE.Scene();
+	context.renderer.setClearColor(0xd8dee3, 1);
+
+	// setup lighting
+	context.lights = [];
+
+	var ambient = new THREE.AmbientLight(0x4f4f4f);
+	context.lights.push(ambient);
+	context.scene.add(ambient);
+
+	var toplight = new THREE.DirectionalLight(0xFFFFFF, 1);
+	toplight.position.set(0, 15, 5);
+	context.lights.push(toplight);
+	context.scene.add(toplight);
+
+	var sidelight = new THREE.DirectionalLight(0x59DDFF, .5);
+	sidelight.position.set(-10, 5, -2);
+	context.lights.push(sidelight);
+	context.scene.add(sidelight);
+
+	var bottomlight =  new THREE.DirectionalLight(0xFF30A8, .5);
+	bottomlight.position.set(5, -15, 5);
+	context.lights.push(bottomlight);
+	context.scene.add(bottomlight);
+
+	// add meshes
+	var objects = [];
+	context.objects = objects;
+	var group = new THREE.Object3D();
+
+	var octahedronCount = 1000;
+
+	var rStart = 5;
+	var rEnd = 15;
+	var rStartSqr = rStart * rStart, rEndSqr = rEnd * rEnd;
+	var rSqrDelta = rEndSqr - rStartSqr;
+
+	var mat = new THREE.MeshPhongMaterial({
+		color: 0xffffff,
+		shading: THREE.FlatShading
+	});
+
+	
+	for (var i = 0; i < octahedronCount; ++i) {
+		var geo = new THREE.OctahedronGeometry(.2);
+		var mesh = new THREE.Mesh(geo, mat);
+
+		var angle = Math.random() * Math.PI * 2;
+		var r = Math.sqrt(Math.random() * rSqrDelta + rStartSqr);
+		var y = Math.random() * 10 - 5;
+		var x = Math.sin(angle) * r;
+		var z = Math.cos(angle) * r;
+
+		mesh.position.set(x, y, z);
+		mesh.scale.y = Math.sqrt(3);
+
+		group.add(mesh);
+	}
+
+	group.position.z = 4.9;
+	context.scene.add(group);
+	objects.push(group);
+}
+
+function initCamera() {
+	context.camera = new THREE.PerspectiveCamera(0, 1, 0.01, 100);
+	context.camera.focalLength = 45;
+	context.camera.frameSize = 32;
+	context.camera.setLens(context.camera.focalLength, context.camera.frameSize);
+
+	context.onResize();
+}
+
+function initStates() {
+	context.states = {};
+	context.states.sceneRot = 0;
+}
+
+function initEffects() {
+	context.renderBuffer = new THREE.WebGLRenderTarget(context.width, context.height, {
+		minFilter: THREE.NearestFilter,
+		magFilter: THREE.NearestFilter,
+		format: THREE.RGBAFormat,
+	});
+	context.effects = [];
+
+	var conf = {
+		'focalDepth': 5,
+		'fstop': 30.0,
+		'maxblur': 3.0,
+		'CoC': 0.01,
+		'bias': 0,
+	};
+	initBokeh(context, conf);
+	context.effects.push(renderBokeh);
+}
+
+function frame() {
+	requestAnimationFrame(frame);
+    update();
+    render();
+}
+
+function render() {
+	var target = context.effects.length > 0 ? context.renderBuffer : undefined;
+	context.renderer.render(context.scene, context.camera, target);
+
+	context.effects.forEach(function(effect) {
+		effect(context);
+	});
+}
+
+function update() {
+	var rotSpeed = .001;
+
+	context.objects[0].rotation.y = context.states.sceneRot;
+	context.states.sceneRot += rotSpeed;
+}
+
+init();
+frame();
+	</script>
+	<div id="developer">
+		<image src="/res/developer-badge.svg" width="322.5" height="150" />
+	</div>
+	<div id="designer">
+		<image src="/res/designer-badge.svg" width="303.75" height="150" />
+	</div>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<html>
+
+<head>
+	<title>Bokeh Effect Example</title>
+
+	<script src="//cdn.bootcss.com/jquery/3.1.0/jquery.min.js"></script>
+	<script src="//cdn.bootcss.com/three.js/r79/three.js"></script>
+	<script src="OrbitControls.js"></script>
+
+	<link rel="import" href="bokeh.html"></head>
+
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+		}
+		canvas {
+			width: 100%;
+			height: 100%;
+		}
+	</style>
+</head>
+
+<body id="canvas-container">
+	<script>
+var context = {};
+window.context = context;
+
+init();
+frame();
+
+function init() {
+	initEnv();
+	initScene();
+	initCamera();
+	initEffects();
+}
+
+function initEnv() {
+	onResize = function() {
+		var canvas = $("canvas#render");
+
+		context.width = canvas.outerWidth();
+		context.height = canvas.outerHeight();
+
+		context.camera.aspect = context.width / context.height;
+		context.camera.updateProjectionMatrix();
+
+		context.renderer.setSize(context.width, context.height);
+	};
+
+	context.renderer = new THREE.WebGLRenderer({
+		antialias: true,
+	});
+	context.renderer.domElement.id="render";
+	$("#canvas-container").append(context.renderer.domElement);
+	$(window).resize(onResize);
+}
+
+function initScene() {
+	context.scene = new THREE.Scene();
+	context.renderer.setClearColor(0xeeeeee, 1);
+
+	// lights
+	context.lights = [];
+
+	var ambient = new THREE.AmbientLight(0x666666);
+	context.lights.push(ambient);
+	context.scene.add(ambient);
+
+	// objects
+	context.objects = [];
+
+	var box = new THREE.BoxGeometry(1, 1, 1);
+	var boxMat = new THREE.MeshPhongMaterial({
+		color: 0xF9C311,
+	});
+	var boxMesh = new THREE.Mesh(box, boxMat);
+	boxMesh.position.set(0, 0, 0);
+	context.objects.push(boxMesh);
+	context.scene.add(boxMesh);
+
+	var sphere = new THREE.SphereGeometry(.5, 32, 32);
+	var sphereMat = new THREE.MeshPhongMaterial({
+		color: 0x4781FF,
+	});
+	var sphereMesh = new THREE.Mesh(sphere, sphereMat);
+	sphereMesh.position.set(2, 0, 0);
+	context.objects.push(sphereMesh);
+	context.scene.add(sphereMesh);
+
+	var torusKnot = new THREE.TorusKnotGeometry(.3, .3*.3, 128, 16);
+	var torusKnotMat = new THREE.MeshPhongMaterial({
+		color: 0xB11ADB,
+	});
+	var torusKnotMesh = new THREE.Mesh(torusKnot, torusKnotMat);
+	torusKnotMesh.position.set(-2, 0, 0);
+	context.objects.push(torusKnotMesh);
+	context.scene.add(torusKnotMesh);
+}
+
+function initCamera() {
+	context.camera = new THREE.PerspectiveCamera(60, 1, 0.01, 100);
+	context.camera.position.z = -5;
+	onResize();
+	context.scene.add(context.camera);
+
+	// light follows camera
+	var top = new THREE.PointLight(0xeeeeee, 1);
+	
+	context.lights.push(top);
+	context.camera.add(top);
+	top.position.set(0, 3, 1);
+
+	context.controls = new THREE.OrbitControls(context.camera, context.renderer.domElement);
+	context.controls.autoRotate = true;
+}
+
+function initEffects() {
+	initBokeh(context);
+}
+
+function frame() {
+	requestAnimationFrame(frame);
+
+	update();
+	render();
+}
+
+function update() {
+	context.controls.update();
+}
+
+function render() {
+	// context.renderer.render(context.scene, context.camera);
+	renderBokeh(context);
+}
+
+	</script>
+</body>
+
+</html>
