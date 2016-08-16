@@ -45,6 +45,8 @@ function initBokeh(context, conf) {
 	uniforms['CoC'].value = conf.CoC;
 	uniforms['bias'].value = conf.bias;
 
+	uniforms['angleRatio'].value = context.angleRatio;
+
 	var material = new THREE.ShaderMaterial({
 		uniforms: uniforms,
 		vertexShader: THREE.DoFShader.vertexShader,

@@ -19,6 +19,7 @@ THREE.DoFShader = {
 		"fringe": {type: "f", value: 3.7},
 
 		"clipCenter": {type: "f", value: 0},
+		"angleRatio": {type: "f", value: 0},
 	},
 
 	vertexShader: [
@@ -72,9 +73,10 @@ THREE.DoFShader = {
 		"}",
 
 		"uniform float clipCenter;",
+		"uniform float angleRatio;",
 
 		"void main() {",
-			"if (vUv.x * size.x - clipCenter < (vUv.y - 0.5) * 0.26794919243112270647255365849413 * size.y) discard;",
+			"if (vUv.x * size.x - clipCenter < (vUv.y - 0.5) * angleRatio * size.y) discard;",
 
 			//scene depth calculation
 			"float depth = unpackDepth(texture2D(tDepth,vUv));",

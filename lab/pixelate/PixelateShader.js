@@ -11,6 +11,7 @@ THREE.PixelateShader = {
 		"bg": {type: "v3", value: new THREE.Vector3(0, 0, 0)},
 
 		"clipCenter": {type: "f", value: 0},
+		"angleRatio": {type: "f", value: 0},
 	},
 
 	vertexShader: [

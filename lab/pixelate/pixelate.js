@@ -18,6 +18,9 @@ function initPixelate(context, conf) {
 
 	uniforms['size'].value.set(width, height);
 	uniforms['texel'].value.set(1 / width, 1 / height);
+
+	uniforms['angleRatio'].value = context.angleRatio;
+	
 	context.addResizeListener(function setPixelateUniforms(context) {
 		uniforms['size'].value.set(context.width, context.height);
 		uniforms['texel'].value.set(1 / context.width, 1 / context.height);

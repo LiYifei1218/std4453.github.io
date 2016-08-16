@@ -12,53 +12,92 @@
 	<style>
 		body {
 			margin: 0;
-			padding: 0;
+			background-color: black;
 		}
 		canvas {
 			width: 100%;
 			height: 100%;
 		}
-
+		.canvas-container {
+			position: absolute;
+			opacity: 0;
+			transition: opacity 500ms linear;
+			width: 100vw;
+			height: 100vh;
+		}
+	
+		.badge {
+			height: 150px;
+			position: absolute;
+			top: calc(50vh - 75px);
+			overflow: hidden;
+			transition: width 200ms cubic-bezier(0.4, 0.0, 0.2, 1);
+		}
+		.badge img {
+			position: absolute;
+			top: 0;
+		}
 		#developer {
 			width: 150px;
-			height: 150px;
-			position: absolute;
 			left: calc(50vw - 400px);
-			top: calc(50vh - 75px);
-			overflow: hidden;
-			transition: width 200ms ease;
 		}
-		#developer.extended {
-			width: 322.5px;
-		}
-		#developer img {
-			position: absolute;
-			left: 0;
-			top: 0;
-		}
+		#developer.extended { width: 322.5px; }
+		#developer img { left: 0; }
 		#designer {
 			width: 150px;
-			height: 150px;
 			position: absolute;
 			right: calc(50vw - 400px);
-			top: calc(50vh - 75px);
-			overflow: hidden;
-			transition: width 200ms ease;
 		}
-		#designer.extended {
-			width: 303.75;
+		#designer.extended { width: 303.75; }
+		#designer img { right: 0;}
+	</style>
+	<style>
+		@keyframes spin {
+			from {transform: rotate(0deg);}
+			to {transform: rotate(359deg);}
 		}
-		#designer img {
+		#load-spinner {
+			transition: opacity 300ms linear;
+			width: 100px;
+			height: 100px;
 			position: absolute;
-			right: 0;
+			left: calc(50vw - 50px);
+			top: calc(50vh - 50px);
+			animation: spin 1.3s linear infinite;
+		}
+		#load-spinner .center-cover {
+			width: 94%;
+			height: 94%;
+			position: absolute;
+			top: 3%;
+			left: 3%;
+			border-radius: 50%;
+			background-color: black;
+		}
+		#load-spinner .semicircle {
+			width: 50%;
+			height: 100%;
+			border-radius: 0% 200% 200% 0% / 0% 100% 100% 0%;
+			background-color: white;
+			position: absolute;
+			left: 50%;
 			top: 0;
+			transform-origin: left center;
+		}
+		#load-spinner .deg-60-240 {
+			transform: rotate(60deg);
 		}
 	</style>
 </head>
 
-<body class="canvas-container">
-
-	<script>
+<body>
+	<div id="load-spinner">
+		<div class="semicircle deg-0-180"></div>
+		<div class="semicircle deg-60-240"></div>
+		<div class="center-cover"></div>
+	</div>
+	<div class="canvas-container">
+		<script>
 var context = {};
 window.context = context;
 
@@ -93,9 +132,7 @@ function initEnv() {
 		context.renderer.setSize(context.width, context.height);
 	});
 
-	context.renderer = new THREE.WebGLRenderer({
-		antialias: true,
-	});
+	context.renderer = new THREE.WebGLRenderer({antialias: true,});
 	context.renderer.autoClear = false;
 
 	context.renderer.domElement.id = "render";
@@ -132,8 +169,8 @@ function initScene() {
 	// add meshes
 	var objects = [];
 	context.objects = objects;
-	var group = new THREE.Object3D();
 
+	var group = new THREE.Object3D();
 	var octahedronCount = 1000;
 
 	var rStart = 5;
@@ -146,7 +183,6 @@ function initScene() {
 		shading: THREE.FlatShading,
 	});
 
-	
 	for (var i = 0; i < octahedronCount; ++i) {
 		var geo = new THREE.OctahedronGeometry(.2);
 		var mesh = new THREE.Mesh(geo, mat);
@@ -180,6 +216,9 @@ function initStates() {
 }
 
 function initEffects() {
+	context.angle = 15;	// in deg
+	context.angleRatio = Math.tan(context.angle / 180 * Math.PI);
+
 	context.renderBuffer = new THREE.WebGLRenderTarget(context.width, context.height, {
 		minFilter: THREE.NearestFilter,
 		magFilter: THREE.NearestFilter,
@@ -239,17 +278,12 @@ function update() {
 	context.clipCenter = (developer.right + designer.left) / 2;
 }
 
-function part(point) {
-	if (point.x - window.innerWidth / 2 >= (point.y - window.innerHeight / 2) * 0.26794919243112270647255365849413)
-		return false;
-	else
-		return true;
-}
-
 $(document).ready(function() {
 	init();
-	frame();
 
+	var part = function(point) {
+		return !(point.x - context.clipCenter >= -(point.y - context.height / 2) * context.angleRatio);
+	}
 	var last = null;
 	$("#render").mousemove(function(event) {
 		var point = {x: event.screenX, y: event.screenY};
@@ -261,13 +295,22 @@ $(document).ready(function() {
 
 		last = point;
 	});
+
+	(function showEverything() {
+		$("#load-spinner").css("opacity", 0);
+		$(".canvas-container").css("opacity", 1);
+	})();
+
+	frame();
 });
 	</script>
-	<div id="developer">
-		<image src="/res/developer-badge.svg" width="322.5" height="150" />
-	</div>
-	<div id="designer">
-		<image src="/res/designer-badge.svg" width="303.75" height="150" />
+
+		<div id="developer" class="badge">
+			<image src="/res/developer-badge.svg" width="322.5" height="150" />
+		</div>
+		<div id="designer" class="badge">
+			<image src="/res/designer-badge.svg" width="303.75" height="150" />
+		</div>
 	</div>
 </body>
 </html>
