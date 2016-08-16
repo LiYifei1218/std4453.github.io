@@ -4,7 +4,7 @@ THREE.DoFShader = {
 		"tDepth": {type: "t", value: null},
 
 		"size": {type: "v2", value: new THREE.Vector2(512, 512)},
-		"textel": {type: "v2", value: new THREE.Vector2(1 / 512, 1 / 512)},
+		"texel": {type: "v2", value: new THREE.Vector2(1 / 512, 1 / 512)},
 
 		"focalDepth": {type: "f", value: 200.0},
 		"focalLength": {type: "f", value: 28.0},
@@ -17,6 +17,8 @@ THREE.DoFShader = {
 		"maxblur": {type: "f", value: 1.0},
 		"bias": {type: "f", value: 0.5},
 		"fringe": {type: "f", value: 3.7},
+
+		"clipCenter": {type: "f", value: 0},
 	},
 
 	vertexShader: [
@@ -51,15 +53,14 @@ THREE.DoFShader = {
 		"uniform float bias;", //bokeh edge bias
 		"uniform float fringe;", //bokeh chromatic aberration/fringing
 
-		// samples and rings need to be constants. no dynamic loop counters in OpenGL ES
-		// Can shader be broken into 2 pass? ... 
-		"int samples = 5;", //samples on the first ring
+		"float samples = 5.0;", //samples on the first ring
 
 		// RGBA depth
 		"float unpackDepth(const in vec4 rgba_depth) {",
 			"const vec4 bit_shift = vec4(1.0 / (256.0 * 256.0 * 256.0), 1.0 / (256.0 * 256.0), 1.0 / 256.0, 1.0);",
 			"float depth = dot(rgba_depth, bit_shift);",
 			"return depth;",
+			// "return rgba_depth.r;",
 		"}",
 
 		"vec3 color(vec2 coords, float blur) {", //processing the sample
@@ -70,7 +71,11 @@ THREE.DoFShader = {
 			"return col;",
 		"}",
 
+		"uniform float clipCenter;",
+
 		"void main() {",
+			"if (vUv.x * size.x - clipCenter < (vUv.y - 0.5) * 0.26794919243112270647255365849413 * size.y) discard;",
+
 			//scene depth calculation
 			"float depth = unpackDepth(texture2D(tDepth,vUv));",
 			"depth = -zfar * znear / (depth * (zfar - znear) - zfar);",
@@ -85,8 +90,6 @@ THREE.DoFShader = {
 			"float b = (d * f) / (d - f);",
 			"float c = (d - f) / (d * fstop * CoC);",
 			"float blur = abs(a - b) * c;",
-			"if (o < 100.0)",
-				"blur = 0.0;",
 			"blur = clamp(blur, 0.0, 1.0);",
 			// getting blur x and y step factor
 			"float w = (1.0 / size.x) * blur * maxblur;",
@@ -95,30 +98,28 @@ THREE.DoFShader = {
 			// calculation of final color
 			"vec3 col = texture2D(tDiffuse, vUv).rgb;",
 			"const ivec4 jMax = ivec4(0, 3, 6, 9);",
+			"float ringsamples;",
 			"if (blur >= 0.05) {",
-				"for (int i = 1; i <= 3; i += 1) {",
-				"float ringsamples = float(i * samples);",
-				"if (i == 1)",
-					"for (int j = 0; j < 3; j += 1) {",
-						"float step = PI * 2.0 / ringsamples;",
-						"float pw = (cos(float(j) * step) * float(i));",
-						"float ph = (sin(float(j) * step) * float(i));",
-						"col += color(vUv + vec2(pw * w, ph * h), blur);",
-					"}",
-				"else if (i == 2)",
-					"for (int j = 0; j < 6; j += 1) {",
-						"float step = PI * 2.0 / ringsamples;",
-						"float pw = (cos(float(j) * step) * float(i));",
-						"float ph = (sin(float(j) * step) * float(i));",
-						"col += color(vUv + vec2(pw * w, ph * h), blur);",
-					"}",
-				"else if (i == 3)",
-					"for (int j = 0; j < 9; j += 1) {",
-						"float step = PI * 2.0 / ringsamples;",
-						"float pw = (cos(float(j) * step) * float(i));",
-						"float ph = (sin(float(j) * step) * float(i));",
-						"col += color(vUv + vec2(pw * w, ph * h), blur);",
-					"}",
+				"ringsamples = 1.0 * samples;",
+				"for (int j = 0; j < 3; j += 1) {",
+					"float step = PI * 2.0 / ringsamples;",
+					"float pw = (cos(float(j) * step) * 1.0);",
+					"float ph = (sin(float(j) * step) * 1.0);",
+					"col += color(vUv + vec2(pw * w, ph * h), blur);",
+				"}",
+				"ringsamples = 2.0 * samples;",
+				"for (int j = 0; j < 6; j += 1) {",
+					"float step = PI * 2.0 / ringsamples;",
+					"float pw = (cos(float(j) * step) * 2.0);",
+					"float ph = (sin(float(j) * step) * 2.0);",
+					"col += color(vUv + vec2(pw * w, ph * h), blur);",
+				"}",
+				"ringsamples = 3.0 * samples;",
+				"for (int j = 0; j < 9; j += 1) {",
+					"float step = PI * 2.0 / ringsamples;",
+					"float pw = (cos(float(j) * step) * 3.0);",
+					"float ph = (sin(float(j) * step) * 3.0);",
+					"col += color(vUv + vec2(pw * w, ph * h), blur);",
 				"}",
 				"col /= 18.0;", //divide by sample count
 			"}",

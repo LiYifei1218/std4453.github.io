@@ -2,11 +2,11 @@ var bokeh = {};
 window.bokeh = bokeh;
 
 bokeh.defaultConf = {
-	'focalDepth': 5,
-	'fstop': 8.0,
-	'maxblur': 2.0,
-	'CoC': 0.03,
-	'bias': 0.5,
+	focalDepth: 5,
+	fstop: 8.0,
+	maxblur: 2.0,
+	CoC: 0.03,
+	bias: 0.5,
 };
 
 function initBokeh(context, conf) {
@@ -14,29 +14,26 @@ function initBokeh(context, conf) {
 	var height = context.height;
 	conf = conf || bokeh.defaultConf;
 
-	var depthShader = THREE.ShaderLib["depthRGBA"];
-	var depthUniforms = THREE.UniformsUtils.clone(depthShader.uniforms);
-	var depthMaterial = new THREE.ShaderMaterial({
-		fragmentShader: depthShader.fragmentShader,
-		vertexShader: depthShader.vertexShader,
-		uniforms: depthUniforms,
-		blending: THREE.NoBlending,
+	bokeh.depthMaterial = new THREE.MeshDepthMaterial({
+		depthPacking: THREE.RGBADepthPacking,
 	});
-	bokeh.depthMaterial = depthMaterial;
-	var depthTarget = new THREE.WebGLRenderTarget(width, height, {
+	bokeh.depthTarget = new THREE.WebGLRenderTarget(width, height, {
 		minFilter: THREE.NearestFilter,
 		magFilter: THREE.NearestFilter,
 		format: THREE.RGBAFormat,
 	});
-	bokeh.depthTarget = depthTarget;
+	context.addResizeListener(function resizeBokehDepthTarget(context) {
+		bokeh.depthTarget.setSize(context.width, context.height);
+	});
 
 	var uniforms = THREE.UniformsUtils.clone(THREE.DoFShader.uniforms);
 
-	uniforms['tDiffuse'].value = context.renderBuffer;
-	uniforms['tDepth'].value = depthTarget;
-
 	uniforms['size'].value.set(width, height);
-	uniforms['textel'].value.set(1.0 / width, 1.0 / height);
+	uniforms['texel'].value.set(1.0 / width, 1.0 / height);
+	context.addResizeListener(function setDoFUniforms(context) {
+		uniforms['size'].value.set(context.width, context.height);
+		uniforms['texel'].value.set(1 / context.width, 1 / context.height);
+	});
 
 	uniforms['znear'].value = context.camera.near;
 	uniforms['zfar'].value = context.camera.far;
@@ -68,8 +65,12 @@ function initBokeh(context, conf) {
 }
 
 function renderBokeh(context) {
+	bokeh.dof.uniforms['tDiffuse'].value = context.renderBuffer.texture;
+	bokeh.dof.uniforms['tDepth'].value = bokeh.depthTarget.texture;
+	bokeh.dof.uniforms['clipCenter'].value = context.clipCenter;
+
 	context.scene.overrideMaterial = bokeh.depthMaterial;
-	context.renderer.render(context.scene, context.camera, bokeh.depthTarget);
+	context.renderer.render(context.scene, context.camera, bokeh.depthTarget, true);
 	context.scene.overrideMaterial = null;
 
 	context.renderer.render(bokeh.dof.scene, bokeh.dof.camera);

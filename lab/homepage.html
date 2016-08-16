@@ -3,8 +3,12 @@
 	<title>Homepage - std4453</title>
 
 	<script src="//cdn.bootcss.com/jquery/3.1.0/jquery.min.js"></script>
-	<script src="//cdn.bootcss.com/three.js/r68/three.js"></script>
-	<link rel="import" href="bokeh/bokeh.html">
+	<script src="//cdn.bootcss.com/three.js/r79/three.js"></script>
+	<script src="bokeh/DofShader.js"></script>
+	<script src="bokeh/bokeh.js"></script>
+	<script src="pixelate/PixelateShader.js"></script>
+	<script src="pixelate/pixelate.js"></script>
+
 	<style>
 		body {
 			margin: 0;
@@ -24,7 +28,7 @@
 			overflow: hidden;
 			transition: width 200ms ease;
 		}
-		#developer:hover {
+		#developer.extended {
 			width: 322.5px;
 		}
 		#developer img {
@@ -41,7 +45,7 @@
 			overflow: hidden;
 			transition: width 200ms ease;
 		}
-		#designer:hover {
+		#designer.extended {
 			width: 303.75;
 		}
 		#designer img {
@@ -52,10 +56,7 @@
 	</style>
 </head>
 
-<body>
-	<div id="developer-canvas-container">
-		<div id="reset-transform" class="canvas-container"></div>
-	</div>
+<body class="canvas-container">
 
 	<script>
 var context = {};
@@ -70,21 +71,33 @@ function init() {
 }
 
 function initEnv() {
+	context.resizeListeners = [];
+
 	context.onResize = function() {
-		var canvas = $("canvas#render");
+		var canvas = $("canvas#render").parent();
 
 		context.width = canvas.outerWidth();
 		context.height = canvas.outerHeight();
 
+		context.resizeListeners.forEach((event) => event(context));
+	};
+	context.addResizeListener = function(fn) {
+		context.resizeListeners.push(fn);
+	};
+
+	context.addResizeListener(function updateCamera(context) {
 		context.camera.aspect = context.width / context.height;
 		context.camera.updateProjectionMatrix();
-
+	});
+	context.addResizeListener(function resizeRenderer(context) {
 		context.renderer.setSize(context.width, context.height);
-	};
+	});
 
 	context.renderer = new THREE.WebGLRenderer({
 		antialias: true,
 	});
+	context.renderer.autoClear = false;
+
 	context.renderer.domElement.id = "render";
 	$(".canvas-container").append(context.renderer.domElement);
 	$(window).resize(context.onResize);
@@ -130,7 +143,7 @@ function initScene() {
 
 	var mat = new THREE.MeshPhongMaterial({
 		color: 0xffffff,
-		shading: THREE.FlatShading
+		shading: THREE.FlatShading,
 	});
 
 	
@@ -150,17 +163,14 @@ function initScene() {
 		group.add(mesh);
 	}
 
-	group.position.z = 4.9;
+	group.position.z = 5.0;
 	context.scene.add(group);
 	objects.push(group);
 }
 
 function initCamera() {
-	context.camera = new THREE.PerspectiveCamera(0, 1, 0.01, 100);
+	context.camera = new THREE.PerspectiveCamera(39, 1, 0.01, 100);
 	context.camera.focalLength = 45;
-	context.camera.frameSize = 32;
-	context.camera.setLens(context.camera.focalLength, context.camera.frameSize);
-
 	context.onResize();
 }
 
@@ -175,16 +185,26 @@ function initEffects() {
 		magFilter: THREE.NearestFilter,
 		format: THREE.RGBAFormat,
 	});
+	context.addResizeListener(function resizeContextRenderBuffer(context) {
+		context.renderBuffer.setSize(context.width, context.height);
+	});
 	context.effects = [];
 
-	var conf = {
-		'focalDepth': 5,
-		'fstop': 30.0,
-		'maxblur': 3.0,
-		'CoC': 0.01,
-		'bias': 0,
+	var pixelateConf = {
+		pixel: [5, 5],
+		interval: [5, 5],
 	};
-	initBokeh(context, conf);
+	initPixelate(context, pixelateConf);
+	context.effects.push(renderPixelate);
+
+	var bokehConf = {
+		focalDepth: 1000,
+		fstop: 160,
+		maxblur: 3.0,
+		CoC: 0.01,
+		bias: 0,
+	};
+	initBokeh(context, bokehConf);
 	context.effects.push(renderBokeh);
 }
 
@@ -195,23 +215,53 @@ function frame() {
 }
 
 function render() {
-	var target = context.effects.length > 0 ? context.renderBuffer : undefined;
-	context.renderer.render(context.scene, context.camera, target);
+	if (context.effects.length > 0) {
+		context.renderer.render(context.scene, context.camera, context.renderBuffer, true);
 
-	context.effects.forEach(function(effect) {
-		effect(context);
-	});
+		context.renderer.setRenderTarget(null);
+		context.renderer.clear();
+		context.effects.forEach(function(effect) {
+			effect(context);
+		});
+	} else {
+		context.renderer.render(context.scene, context.camera, null, true);
+	}
 }
 
 function update() {
 	var rotSpeed = .001;
-
 	context.objects[0].rotation.y = context.states.sceneRot;
 	context.states.sceneRot += rotSpeed;
+
+	developer = $("#developer")[0].getClientRects()[0];
+	designer = $("#designer")[0].getClientRects()[0];
+
+	context.clipCenter = (developer.right + designer.left) / 2;
 }
 
-init();
-frame();
+function part(point) {
+	if (point.x - window.innerWidth / 2 >= (point.y - window.innerHeight / 2) * 0.26794919243112270647255365849413)
+		return false;
+	else
+		return true;
+}
+
+$(document).ready(function() {
+	init();
+	frame();
+
+	var last = null;
+	$("#render").mousemove(function(event) {
+		var point = {x: event.screenX, y: event.screenY};
+		if (last != null)
+			if (part(last) ^ part(point)) {
+				(part(last) ? $("#developer") : $("#designer")).removeClass("extended");
+				(part(point) ? $("#developer") : $("#designer")).addClass("extended");
+			}
+
+		last = point;
+	});
+});
 	</script>
 	<div id="developer">
 		<image src="/res/developer-badge.svg" width="322.5" height="150" />

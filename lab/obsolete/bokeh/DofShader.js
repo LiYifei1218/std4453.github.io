@@ -5,7 +5,7 @@ THREE.DoFShader = {
 		"znear": {type: "f", value: 1.0},
 		"zfar": {type: "f",	value: 1000.0},
 		"size": {type: "v2", value: new THREE.Vector2(512, 512)},
-		"textel": {type: "v2", value: new THREE.Vector2(1 / 512, 1 / 512)},
+		"texel": {type: "v2", value: new THREE.Vector2(1 / 512, 1 / 512)},
 		"focalDepth": {type: "f", value: 200.0},
 		"focalLength": {type: "f", value: 28.0},
 		"fstop": {type: "f", value: 2.8},
