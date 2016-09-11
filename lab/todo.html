@@ -1,0 +1,285 @@
+<html>
+<head>
+	<title>ToDo List - std4453</title>
+
+	<meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0, user-scalable=no"/>
+
+	<script src="//cdn.bootcss.com/jquery/3.1.0/jquery.min.js"></script>
+	<script src="//cdn.bootcss.com/yepnope/1.5.4/yepnope.min.js"></script>
+	<script src="todo/modernizr-custom.js"></script>
+
+	<script src="/bower_components/webcomponentsjs/webcomponents-lite.min.js"></script>
+	<link rel="import" href="/bower_components/polymer/polymer.html">
+	<link rel="import" href="/bower_components/paper-card/paper-card.html">
+	<link rel="import" href="/bower_components/paper-fab/paper-fab.html">
+	<link rel="import" href="/bower_components/paper-input/paper-input.html">
+	<link rel="import" href="/bower_components/paper-styles/paper-styles.html">
+	<link rel="import" href="/bower_components/paper-header-panel/paper-header-panel.html">
+	<link rel="import" href="/bower_components/paper-toolbar/paper-toolbar.html">
+	<link rel="import" href="/bower_components/iron-icons/iron-icons.html">
+	<link rel="import" href="/bower_components/iron-icons/image-icons.html">
+	<link rel="import" href="/bower_components/paper-icon-button/paper-icon-button.html">
+	<link rel="import" href="/bower_components/paper-dialog/paper-dialog.html">
+	<link rel="import" href="/bower_components/paper-input/paper-input.html">
+	<link rel="import" href="/bower_components/paper-button/paper-button.html">
+	<link rel="import" href="/bower_components/neon-animation/animations/fade-in-animation.html">
+	<link rel="import" href="/bower_components/neon-animation/animations/fade-out-animation.html">
+
+	<style is="custom-style">
+		body {
+			background-color: var(--google-grey-100);
+		}
+		paper-fab {
+			--paper-fab-background: var(--accent-color);
+			position: fixed;
+			right: 30px;
+			bottom: 30px;
+		}
+	</style>
+	<script>
+detectFeatures = function() {
+	// json
+	yepnope({
+		test: Modernizr.json,
+		nope: '//cdn.bootcss.com/json2/20150503/json2.min.js',
+	});
+
+	// base64
+	yepnope({
+		test: Modernizr.atobbtoa,
+		nope: '//cdn.bootcss.com/Base64/1.0.0/base64.min.js',
+	});
+	window.Base64 = { // unicode support, from MDN
+		encode: function(str) {
+			return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+				return String.fromCharCode('0x' + p1);
+			}));
+		},
+		decode: function(str) {
+			return decodeURIComponent(Array.prototype.map.call(atob(str), function(c) {
+				return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+			}).join(''));
+		},
+	};
+
+	// clone, currently implemented inline
+	window.clone = function(o) { // only clones simple JSON object
+		var cloneOnP = function(o) { // clones objects and primitives
+			if (o instanceof Object)
+				return window.clone(o);
+			else
+				return o; // since primitive values are considered non-referred
+		};
+
+		if (o instanceof Array) {
+			var clone = [];
+			o.forEach(function(item) {
+				clone.push(cloneOnP(item));
+			});
+			return clone;
+		} else if (o instanceof Object) {
+			var clone = {};
+			for (key in o)
+				clone[key] = cloneOnP(o[key]);
+			return clone;
+		} else return o; // actually this is unreachable
+	};
+};
+
+encodeText = function(str) {return window.Base64.encode(str);};
+decodeText = function(str) {return window.Base64.decode(str);};
+
+loadTodo = function() {
+	if (typeof localStorage.todo === 'undefined')
+		saveTodo([]);
+	var dataEncoded = JSON.parse(localStorage.todo);
+	dataEncoded.forEach(function(item) {
+		if (item.data)
+			item.data = decodeText(item.data);
+	});
+	return dataEncoded;
+};
+saveTodo = function(todo) {
+	var dataEncoded = window.clone(todo);
+	dataEncoded.forEach(function(item) {
+		if (item.data)
+			item.data = encodeText(item.data);
+	});
+
+	localStorage.todo = JSON.stringify(dataEncoded);
+};
+
+var loaded = false;
+$(document).ready(function() {
+	detectFeatures();
+});
+	</script>
+
+	<dom-module id="todo-list">
+		<template>
+			<style is="custom-style">
+				:host {
+					text-align: center;
+					display: block;
+				}
+				paper-card {
+					@apply(--shadow-elevation-2dp);
+
+					background-color: white;
+					display: inline-block;
+					width: calc(100% - 20px);
+					margin: 5px 10px;
+					text-align: left;
+					border-radius: 2px;
+
+					animation: fade-in 200ms linear;
+				}
+				paper-card.removed {
+					animation: fade-out 200ms linear;
+					opacoty: 0;
+				}
+				@keyframes fade-in {
+					from {opacity: 0;}
+					to {opacity: 1;}
+				}
+				@keyframes fade-out {
+					from {opacity: 1;}
+					to {opacity: 0;}
+				}
+				paper-card paper-icon-button {
+					float: right;
+					margin-top: -10px;
+				}
+				paper-dialog {
+					text-align: initial;
+				}
+				paper-dialog paper-input {
+					min-width: 300px;
+				}
+			</style>
+
+			<template id="todos" is="dom-repeat" items="[[todo]]">
+				<paper-card><div class="card-content">
+					{{item.data}}
+					<paper-icon-button icon="delete" on-click="deleteTodo"></paper-icon-button>
+					<paper-icon-button icon="image:edit" on-click="editContent"></paper-icon-button>
+				</div></paper-card>
+			</template>
+			<paper-dialog id="dialog" modal enter-animation="fade-in-animation" exit-animation="fade-out-animation">
+				<h2 id="title">Add Todo</h2>
+				<paper-input label="Content" id="content"></paper-input>
+				<div class="buttons">
+					<paper-button dialog-dismiss>Cancel</paper-button>
+					<paper-button dialog-confirm autofocus id="confirm"></paper-button>
+				</div>
+			</paper-dialog>
+		</template>
+
+		<script>
+HTMLImports.whenReady(function() {
+	Polymer({
+		is: "todo-list",
+
+		properties: {
+			todo: {
+				type: Array,
+			},
+		},
+
+		ready: function() {
+			this.dialogConf = {
+				addTodo: {
+					title: "Add Todo",
+					confirm: "Add",
+					action: "_addTodo",
+				},
+				editContent: {
+					title: "Edit Content",
+					confirm: "Confirm",
+					action: "_editContent",
+				},
+			};
+			this.listen(this.$.dialog, "iron-overlay-closed", "_onDialogClosed");
+		},
+
+		openDialog: function(scenario, cookie) {
+			var conf = this.dialogConf[scenario];
+			this.$.title.innerHTML = conf.title;
+			Polymer.dom(this.$.confirm).innerHTML = conf.confirm;
+			Polymer.dom.flush();
+
+			this.dialogAction = this[conf.action];
+			this.dialogActionCookie = cookie;
+			this.$.content.value = "";
+			this.$.dialog.open();
+		},
+
+		_onDialogClosed: function() {
+			if (this.$.dialog.closingReason.confirmed)
+				this.dialogAction.apply(this, [this.dialogActionCookie]);
+		},
+
+		initTodo: function(todo) {
+			this.set('todo', todo);
+		},
+
+		addTodo: function() {
+			this.openDialog("addTodo");
+		},
+
+		_addTodo: function() {
+			var todo = {data: this.$.content.value};
+			this.push('todo', todo);
+			this.saveTodo();
+		},
+
+		deleteTodo: function(e) {
+			var item = e.model.get('item');
+			var index = this.get('todo').indexOf(item);
+			this.splice('todo', index, 1);
+			this.saveTodo();
+		},
+
+		editContent: function(e) {
+			var item = e.model.get('item');
+			this.openDialog("editContent", item);
+		},
+
+		_editContent: function(item) {
+			var index = this.get('todo').indexOf(item);
+			item.data = this.$.content.value;
+			this.notifyPath(['todo', index, 'data']);
+			this.saveTodo();
+		},
+
+		saveTodo: function() {
+			saveTodo(this.get('todo'));
+		},
+	});
+});
+		</script>
+	</dom-module>
+
+	<script>
+document.addEventListener("WebComponentsReady", function() {
+	var todoList = $("#todo")[0];
+	todoList.initTodo(loadTodo());
+	$("#add").click(function() {
+		todoList.addTodo();
+	});
+});
+	</script>
+</head>
+
+<body class="fullbleed layout vertical">
+<paper-header-panel class="flex">
+	<paper-toolbar>
+		<div class="title">ToDo List</div>
+	</paper-toolbar>
+	<div class="content fit">
+		<todo-list id="todo" class="fit"></todo-list>
+	</div>
+</paper-header-panel>
+<paper-fab id="add" icon="add"></paper-fab>
+</body>
+</html>
